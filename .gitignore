@@ -1,0 +1,6 @@
+.gradle/
+build/
+.tmp/
+out/
+*.class
+run/

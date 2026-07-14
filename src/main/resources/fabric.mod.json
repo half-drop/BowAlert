@@ -1,0 +1,23 @@
+{
+  "schemaVersion": 1,
+  "id": "bowalert",
+  "version": "${version}",
+  "name": "Bow Alert",
+  "description": "Warns you when nearby entities holding ranged or throwable weapons are facing your direction.",
+  "authors": ["half_drop"],
+  "contact": {
+    "sources": "https://github.com/half-drop/bow-alert"
+  },
+  "license": "MIT",
+  "icon": "assets/bowalert/icon.png",
+  "environment": "client",
+  "entrypoints": {
+    "client": ["com.halfdrop.bowalert.BowAlertClient"]
+  },
+  "depends": {
+    "fabricloader": ">=0.19.3",
+    "minecraft": ">=1.21.11",
+    "java": ">=21",
+    "fabric-api": "*"
+  }
+}

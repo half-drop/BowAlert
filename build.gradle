@@ -1,0 +1,67 @@
+plugins {
+    id 'net.fabricmc.fabric-loom-remap' version "${loom_version}"
+    id 'maven-publish'
+}
+
+def target = providers.gradleProperty('mcTarget').getOrElse('1.21.11')
+def targetVersions = [
+    '1.21.11': [minecraft: '1.21.11', fabricApi: '0.141.4+1.21.11'],
+    '26.2'   : [minecraft: '26.2',    fabricApi: '0.154.2+26.2']
+]
+
+if (!targetVersions.containsKey(target)) {
+    throw new GradleException("Unsupported target '${target}'. Use 1.21.11 or 26.2.")
+}
+
+def versions = targetVersions[target]
+def targetJava = target == '26.2' ? 25 : 21
+version = "${project.mod_version}+mc${versions.minecraft}"
+group = project.maven_group
+
+base {
+    archivesName = "${project.archives_base_name}-${versions.minecraft}"
+}
+
+loom {
+    splitEnvironmentSourceSets()
+    mods {
+        'bowalert' {
+            sourceSet sourceSets.main
+            sourceSet sourceSets.client
+        }
+    }
+}
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    minecraft "com.mojang:minecraft:${versions.minecraft}"
+    mappings loom.officialMojangMappings()
+    modImplementation "net.fabricmc:fabric-loader:${project.loader_version}"
+    modImplementation "net.fabricmc.fabric-api:fabric-api:${versions.fabricApi}"
+}
+
+processResources {
+    inputs.property 'version', project.version
+    filesMatching('fabric.mod.json') {
+        expand 'version': project.version
+    }
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.release = targetJava
+}
+
+java {
+    withSourcesJar()
+    sourceCompatibility = JavaVersion.toVersion(targetJava)
+    targetCompatibility = JavaVersion.toVersion(targetJava)
+}
+
+jar {
+    from('LICENSE') {
+        rename { "${it}_${project.archives_base_name}" }
+    }
+}
