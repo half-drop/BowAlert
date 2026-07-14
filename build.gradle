@@ -1,5 +1,6 @@
 plugins {
-    id 'net.fabricmc.fabric-loom-remap' version "${loom_version}"
+    id 'net.fabricmc.fabric-loom' version "${loom_version}" apply false
+    id 'net.fabricmc.fabric-loom-remap' version "${loom_version}" apply false
     id 'maven-publish'
 }
 
@@ -12,6 +13,8 @@ def targetVersions = [
 if (!targetVersions.containsKey(target)) {
     throw new GradleException("Unsupported target '${target}'. Use 1.21.11 or 26.2.")
 }
+
+apply plugin: target == '26.2' ? 'net.fabricmc.fabric-loom' : 'net.fabricmc.fabric-loom-remap'
 
 def versions = targetVersions[target]
 def targetJava = target == '26.2' ? 25 : 21
@@ -32,15 +35,30 @@ loom {
     }
 }
 
+sourceSets {
+    client {
+        java.srcDir(target == '26.2' ? 'src/client262/java' : 'src/client121/java')
+    }
+}
+
 repositories {
     mavenCentral()
 }
 
 dependencies {
     minecraft "com.mojang:minecraft:${versions.minecraft}"
-    mappings loom.officialMojangMappings()
-    modImplementation "net.fabricmc:fabric-loader:${project.loader_version}"
-    modImplementation "net.fabricmc.fabric-api:fabric-api:${versions.fabricApi}"
+    // 26.2 ships with its native development names and Fabric's official template
+    // intentionally declares no mappings dependency for it.
+    if (target == '1.21.11') {
+        mappings loom.officialMojangMappings()
+    }
+    if (target == '26.2') {
+        implementation "net.fabricmc:fabric-loader:${project.loader_version}"
+        implementation "net.fabricmc.fabric-api:fabric-api:${versions.fabricApi}"
+    } else {
+        modImplementation "net.fabricmc:fabric-loader:${project.loader_version}"
+        modImplementation "net.fabricmc.fabric-api:fabric-api:${versions.fabricApi}"
+    }
 }
 
 processResources {

@@ -17,7 +17,7 @@ Bow Alert 是一个 Fabric 客户端预警模组。附近实体手持弓、弩�
 ## 版本状态
 
 - Minecraft 1.21.11
-- Minecraft 26.2（等待 Mojang/Fabric 发布可用的开发映射后启用构建；当前官方清单不含该版本映射）
+- Minecraft 26.2
 
 ## 构建
 
@@ -25,4 +25,4 @@ Bow Alert 是一个 Fabric 客户端预警模组。附近实体手持弓、弩�
 .\gradlew.bat build '-PmcTarget=1.21.11'
 ```
 
-创建 `v*` 格式的 Git 标签后，GitHub Actions 会构建已验证的版本并作为 GitHub Release 附件发布。26.2 的映射发布后，将把它重新加入发布矩阵。
+创建 `v*` 格式的 Git 标签后，GitHub Actions 会构建两个版本并作为 GitHub Release 附件发布。
