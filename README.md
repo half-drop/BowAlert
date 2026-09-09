@@ -25,4 +25,4 @@ Bow Alert 是一个 Fabric 客户端预警模组。附近实体手持弓、弩�
 .\gradlew.bat build '-PmcTarget=1.21.11'
 ```
 
-创建 `v*` 格式的 Git 标签后，GitHub Actions 会构建两个版本并作为 GitHub Release 附件发布。
+创建 `v*` 格式的 Git 标签后，GitHub Actions 会构建两个版本并作为 GitHub Release 附件发布，同时同步上传到 [Modrinth](https://modrinth.com/mod/bowalert)（仓库需配置 `MODRINTH_TOKEN` Secret）。

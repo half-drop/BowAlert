@@ -48,3 +48,23 @@ jobs:
         with:
           files: release-assets/*.jar
           generate_release_notes: true
+
+  publish-modrinth:
+    needs: release
+    if: startsWith(github.ref, 'refs/tags/')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          path: release-assets
+          merge-multiple: true
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Publish to Modrinth
+        env:
+          MODRINTH_TOKEN: ${{ secrets.MODRINTH_TOKEN }}
+          MODRINTH_PROJECT_ID: cST5iATf
+          GITHUB_REF_NAME: ${{ github.ref_name }}
+        run: python scripts/publish_modrinth.py
