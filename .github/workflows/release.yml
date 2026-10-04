@@ -20,6 +20,8 @@ jobs:
             java: "21"
           - minecraft: "26.2"
             java: "25"
+          - minecraft: "26.3"
+            java: "25"
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-java@v4

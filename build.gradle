@@ -4,20 +4,22 @@ plugins {
     id 'maven-publish'
 }
 
-def target = providers.gradleProperty('mcTarget').getOrElse('1.21.11')
+def target = providers.gradleProperty('mcTarget').getOrElse('26.3')
 def targetVersions = [
     '1.21.11': [minecraft: '1.21.11', fabricApi: '0.141.4+1.21.11'],
-    '26.2'   : [minecraft: '26.2',    fabricApi: '0.154.2+26.2']
+    '26.2'   : [minecraft: '26.2',    fabricApi: '0.154.2+26.2'],
+    '26.3'   : [minecraft: '26.3',    fabricApi: '0.161.0+26.3']
 ]
 
 if (!targetVersions.containsKey(target)) {
-    throw new GradleException("Unsupported target '${target}'. Use 1.21.11 or 26.2.")
+    throw new GradleException("Unsupported target '${target}'. Use ${targetVersions.keySet().join(', ')}.")
 }
 
-apply plugin: target == '26.2' ? 'net.fabricmc.fabric-loom' : 'net.fabricmc.fabric-loom-remap'
+def unobfuscated = target != '1.21.11'
+apply plugin: unobfuscated ? 'net.fabricmc.fabric-loom' : 'net.fabricmc.fabric-loom-remap'
 
 def versions = targetVersions[target]
-def targetJava = target == '26.2' ? 25 : 21
+def targetJava = unobfuscated ? 25 : 21
 version = "${project.mod_version}+mc${versions.minecraft}"
 group = project.maven_group
 
@@ -37,7 +39,7 @@ loom {
 
 sourceSets {
     client {
-        java.srcDir(target == '26.2' ? 'src/client262/java' : 'src/client121/java')
+        java.srcDir(unobfuscated ? 'src/client26/java' : 'src/client121/java')
     }
 }
 
@@ -47,12 +49,11 @@ repositories {
 
 dependencies {
     minecraft "com.mojang:minecraft:${versions.minecraft}"
-    // 26.2 ships with its native development names and Fabric's official template
-    // intentionally declares no mappings dependency for it.
-    if (target == '1.21.11') {
+    // Minecraft 26.x ships unobfuscated and needs no mappings dependency.
+    if (!unobfuscated) {
         mappings loom.officialMojangMappings()
     }
-    if (target == '26.2') {
+    if (unobfuscated) {
         implementation "net.fabricmc:fabric-loader:${project.loader_version}"
         implementation "net.fabricmc.fabric-api:fabric-api:${versions.fabricApi}"
     } else {
@@ -62,9 +63,15 @@ dependencies {
 }
 
 processResources {
-    inputs.property 'version', project.version
+    def properties = [
+        version: project.version,
+        minecraft_version: versions.minecraft,
+        java_version: targetJava,
+        loader_version: project.loader_version
+    ]
+    inputs.properties properties
     filesMatching('fabric.mod.json') {
-        expand 'version': project.version
+        expand properties
     }
 }
 

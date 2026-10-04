@@ -20,9 +20,10 @@ UA = "BowAlert-CI/1.0 (github.com/half-drop/BowAlert)"
 FABRIC_API_ID = "P7dR8mSH"
 
 # jar filename stem patterns produced by build.gradle:
-# bow-alert-1.21.11-1.0.0+mc1.21.11.jar
-# bow-alert-26.2-1.0.0+mc26.2.jar
-GAME_VERSIONS = ("1.21.11", "26.2")
+# bow-alert-1.21.11-1.0.1+mc1.21.11.jar
+# bow-alert-26.2-1.0.1+mc26.2.jar
+# bow-alert-26.3-1.0.1+mc26.3.jar
+GAME_VERSIONS = ("1.21.11", "26.2", "26.3")
 
 
 def fail(message: str) -> None:
@@ -157,7 +158,7 @@ def main() -> None:
             "POST",
             "/version",
             json_body={"data": payload},
-            files={"file_parts": (jar.name, jar.read_bytes())},
+            files={jar.name: (jar.name, jar.read_bytes())},
         )
         if status >= 300:
             fail(f"failed to create version {version_number}: {status} {data}")
