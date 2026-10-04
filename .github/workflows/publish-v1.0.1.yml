@@ -30,10 +30,11 @@ jobs:
           import os
           import struct
           import subprocess
+          import time
           import zipfile
           from pathlib import Path
           
-          config = json.loads(r'''{"key":"bow","repo":"half-drop/BowAlert","folder":"BowAlert","branch":"release/publish-v1.0.1","tag":"v1.0.1","version":"1.0.1","title":"Bow Alert 1.0.1 — Minecraft 26.3","sha":"276b2f7305cd0b57266cbd31facd9234947bd1d9","run":37210442017,"id":"bowalert","prefix":"bow-alert","notes":"## 更新内容\n\n- 新增 Minecraft 26.3 支持，并保留 26.2、1.21.11 的独立安装包。\n- 更新对应的 Fabric 构建依赖与 Java 版本声明。\n- 修复 Modrinth 发布脚本的附件参数。\n\n## 安装\n\n这是 Fabric 客户端模组。安装 Fabric Loader 和对应游戏版本的 Fabric API，将下方对应 Minecraft 版本的一个 JAR 放入 mods 文件夹。\n\n| Minecraft | Java | Fabric Loader | Fabric API |\n| --- | --- | --- | --- |\n| 26.3 | 25 | 0.19.5+ | 0.161.0+26.3 |\n| 26.2 | 25 | 0.19.5+ | 0.154.2+26.2 |\n| 1.21.11 | 21 | 0.19.5+ | 0.141.4+1.21.11 |\n\n## 验证与已知问题\n\n三个安装包均来自提交 276b2f7305cd0b57266cbd31facd9234947bd1d9 的成功 CI 构建，并在发布前核验 JSON、版本声明、入口类、字节码和 SHA-256。\n\n多个同等级威胁同时存在时，当前目标选择会先比较拉弓进度，可能不会优先显示距离最近的目标。\n","artifacts":[{"id":11306571641,"name":"bow-alert-1.21.11","digest":"sha256:dcb37a389ad2f8a232a61eeb7c8e31d9084bbfd25642902a111608085f789d3e"},{"id":11306475868,"name":"bow-alert-26.3","digest":"sha256:5b80fd986b5f485bcb4727294308dfd66cb440605ceabcfbd03db02b49caee16"},{"id":11306172286,"name":"bow-alert-26.2","digest":"sha256:0dd92d18798f43f0eca3b84755179958f26913e91c2ebcc8e5b856daa325b819"}]}''')
+          config = json.loads(r'''{"key":"bow","repo":"half-drop/BowAlert","folder":"BowAlert","branch":"release/publish-v1.0.1","tag":"v1.0.1","version":"1.0.1","title":"Bow Alert 1.0.1 — Minecraft 26.3","sha":"276b2f7305cd0b57266cbd31facd9234947bd1d9","run":37210442017,"id":"bowalert","prefix":"bow-alert","notes":"## 更新内容\n\n- 新增 Minecraft 26.3 支持，并保留 26.2、1.21.11 的独立安装包。\n- 更新对应的 Fabric 构建依赖与 Java 版本声明。\n- 修复 Modrinth 发布脚本的附件参数。\n\n## 安装\n\n这是 Fabric 客户端模组。安装 Fabric Loader 和对应游戏版本的 Fabric API，将下方对应 Minecraft 版本的一个 JAR 放入 mods 文件夹。\n\n| Minecraft | Java | Fabric Loader | Fabric API |\n| --- | --- | --- | --- |\n| 26.3 | 25 | 0.19.5+ | 0.161.0+26.3 |\n| 26.2 | 25 | 0.19.5+ | 0.154.2+26.2 |\n| 1.21.11 | 21 | 0.19.5+ | 0.141.4+1.21.11 |\n\n## 验证与已知问题\n\n三个安装包均来自提交 276b2f7305cd0b57266cbd31facd9234947bd1d9 的成功 CI 构建，并在发布前核验 JSON、版本声明、入口类、字节码和 SHA-256。\n\n多个同等级威胁同时存在时，当前目标选择会先比较拉弓进度，可能不会优先显示距离最近的目标。\n","artifacts":[{"id":11306571641,"name":"bow-alert-1.21.11","digest":"sha256:dcb37a389ad2f8a232a61eeb7c8e31d9084bbfd25642902a111608085f789d3e"},{"id":11306475868,"name":"bow-alert-26.3","digest":"sha256:5b80fd986b5f485bcb4727294308dfd66cb440605ceabcfbd03db02b49caee16"},{"id":11306172286,"name":"bow-alert-26.2","digest":"sha256:0dd92d18798f43f0eca3b84755179958f26913e91c2ebcc8e5b856daa325b819"}],"release_id":403090790}''')
           assert os.environ["GITHUB_REPOSITORY"] == config["repo"], "Unexpected repository"
           repo = config["repo"]
           
@@ -42,10 +43,19 @@ jobs:
               return result.stdout if binary else result.stdout.decode()
           
           def api(endpoint, *args):
-              return json.loads(gh("api", f"repos/{repo}/{endpoint}", *args))
+              return json.loads(gh("api", "-H", "Cache-Control: no-cache", f"repos/{repo}/{endpoint}", *args))
           
           def digest(data):
               return "sha256:" + hashlib.sha256(data).hexdigest()
+          
+          def eventually(read, ready):
+              for delay in (0, 1, 2, 4, 8):
+                  if delay:
+                      time.sleep(delay)
+                  value = read()
+                  if ready(value):
+                      return value
+              raise RuntimeError("GitHub state did not become visible after bounded retries")
           
           run = api(f"actions/runs/{config['run']}")
           assert run["status"] == "completed" and run["conclusion"] == "success", "Build was not successful"
@@ -106,10 +116,8 @@ jobs:
           print(json.dumps({"validated_artifacts": assets}, indent=2))
           
           tag = config["tag"]
-          releases = api("releases?per_page=100")
-          matches = [r for r in releases if r["tag_name"] == tag]
-          assert len(matches) <= 1, "Duplicate releases"
-          release = matches[0] if matches else None
+          release = api(f"releases/{config['release_id']}")
+          assert release["tag_name"] == tag, "Unexpected draft release"
           
           refs = api(f"git/matching-refs/tags/{tag}")
           refs = [r for r in refs if r["ref"] == f"refs/tags/{tag}"]
@@ -129,9 +137,10 @@ jobs:
           notes = Path("release-notes.md")
           notes.write_text(config["notes"], encoding="utf-8")
           if release is None:
-              gh("release", "create", tag, "--repo", repo, "--verify-tag", "--target", config["sha"],
-                 "--draft", "--title", config["title"], "--notes-file", str(notes))
-              release = next(r for r in api("releases?per_page=100") if r["tag_name"] == tag)
+              payload = Path("create-release.json")
+              payload.write_text(json.dumps({"tag_name": tag, "target_commitish": config["sha"],
+                                            "name": config["title"], "body": config["notes"], "draft": True}))
+              release = api("releases", "--method", "POST", "--input", str(payload))
           else:
               assert release["name"] == config["title"] and release["body"].strip() == config["notes"].strip(), "Existing release differs"
           
@@ -142,7 +151,9 @@ jobs:
               assert release["draft"], "Published release is incomplete"
               gh("release", "upload", tag, "--repo", repo, *[str(out / n) for n in missing])
           
-          remote_assets = api(f"releases/{release['id']}/assets?per_page=100")
+          remote_assets = eventually(
+              lambda: api(f"releases/{release['id']}/assets?per_page=100"),
+              lambda found: {a["name"] for a in found} == set(assets) and all(a["state"] == "uploaded" for a in found))
           assert {a["name"] for a in remote_assets} == set(assets)
           for asset in remote_assets:
               expected_asset = assets[asset["name"]]
@@ -153,7 +164,9 @@ jobs:
           
           if release["draft"]:
               gh("release", "edit", tag, "--repo", repo, "--draft=false", "--latest")
-          published = api(f"releases/{release['id']}")
+          published = eventually(
+              lambda: api(f"releases/{release['id']}"),
+              lambda item: not item["draft"] and bool(item["published_at"]))
           assert not published["draft"] and not published["prerelease"] and published["published_at"]
           ref = api(f"git/ref/tags/{tag}")
           assert ref["object"]["type"] == "commit" and ref["object"]["sha"] == config["sha"]
